@@ -148,9 +148,9 @@
         max_lon = -10000.
 
 !$omp parallel
-        if(omp_get_thread_num().eq.1) then
-            write(6,*), 'Max threads used: ', omp_get_num_threads()
-        end if
+        !$ if(omp_get_thread_num().eq.1) then
+        !$     write(6,*), 'Max threads used: ', omp_get_num_threads()
+        !$ end if
 !$omp end parallel
 
         if ((slrngAccessor.eq.0).and.(r0.eq.0.0d0)) then
