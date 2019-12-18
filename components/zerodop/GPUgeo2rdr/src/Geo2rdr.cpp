@@ -138,9 +138,11 @@ void Geo2rdr::geo2rdr() {
 
     // OpenMP replacement for clock() (clock reports cumulative thread time, not single thread
     // time, so clock() on 4 threads would report 4 x the true runtime) 
+#ifdef _OPENMP
     timer_start = omp_get_wtime();
-    cnt = 0;
     printf("Geo2rdr executing on %d threads...\n",  omp_get_max_threads());
+#endif
+    cnt = 0;
 
     dtaz = nAzLooks / prf;
     tend = tstart + ((imgLength - 1) * dtaz);
@@ -360,7 +362,9 @@ void Geo2rdr::geo2rdr() {
 
         printf("\n  ------------------ EXITING GPU GEO2RDR ------------------\n\n");
         printf("Finished!\n");
+#ifdef _OPENMP
         printf("Elapsed time = %f seconds\n", (omp_get_wtime()-timer_start));
+#endif
 
         delete[] lat;
         delete[] lon;
@@ -486,6 +490,8 @@ void Geo2rdr::geo2rdr() {
         delete[] azoff;
         delete[] distance;
 
+#ifdef _OPENMP
         printf("Elapsed time = %f seconds\n", (omp_get_wtime()-timer_start));
+#endif
     }
 }
