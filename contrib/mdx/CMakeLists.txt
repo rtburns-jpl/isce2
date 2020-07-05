@@ -1,7 +1,4 @@
 if(TARGET Motif::Motif
-   AND TARGET X11::X11
-   AND TARGET X11::Xau
-   AND TARGET X11::Xt
    )
     add_executable(mdx
         src/graphx_mdx.c
@@ -15,9 +12,6 @@ if(TARGET Motif::Motif
     endif()
     target_link_libraries(mdx PUBLIC
         Motif::Motif
-        X11::X11
-        X11::Xau
-        X11::Xt
         )
     install(TARGETS mdx
             RUNTIME DESTINATION bin

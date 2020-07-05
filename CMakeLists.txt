@@ -20,8 +20,8 @@ find_package(Motif)
 find_package(OpenMP REQUIRED COMPONENTS C CXX Fortran)
 # Find these, and create IMPORTED INTERFACE libraries for them if they exist
 include(TargetGDAL)
-include(TargetMotif)
 include(TargetX11)
+include(TargetMotif)
 include(UseCython)
 
 if(NOT DEFINED PYTHON_MODULE_DIR)
