@@ -4,7 +4,7 @@ if(TARGET Motif::Motif
         src/graphx_mdx.c
         src/rdf_reader_subs.f
         src/mdx_main.F
-        src/mdx.F
+        src/mdx_subs.F
         )
     target_compile_definitions(mdx PRIVATE SUN IO64)
     if("${CMAKE_Fortran_COMPILER_ID}" STREQUAL "GNU")
