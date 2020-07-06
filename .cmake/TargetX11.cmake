@@ -1,5 +1,4 @@
 set(components
-    Xau
     Xt
     )
 
