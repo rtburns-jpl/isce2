@@ -25,3 +25,5 @@ if(X11_FOUND)
         endif()
     endforeach()
 endif()
+
+target_link_libraries(X11::SM INTERFACE uuid)
