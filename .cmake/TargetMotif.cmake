@@ -6,6 +6,8 @@ if(MOTIF_FOUND AND TARGET X11::Xt AND NOT TARGET Motif::Motif)
         SYSTEM INTERFACE ${MOTIF_INCLUDE_DIR})
     target_link_libraries(Motif::Motif
         INTERFACE ${MOTIF_LIBRARIES}
-        X11::Xt
+        )
+    target_link_libraries(Motif::Motif
+        INTERFACE X11::Xt
         )
 endif()
