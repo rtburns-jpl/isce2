@@ -10,6 +10,13 @@ if(CMAKE_CUDA_COMPILER)
     set(CMAKE_CUDA_STANDARD 11)
     set(CMAKE_CUDA_STANDARD_REQUIRED TRUE)
     enable_language(CUDA)
+
+    # Clang < 11 can't compile CUDA code with GNU extensions
+    if(CMAKE_CUDA_COMPILER_ID STREQUAL "Clang" AND
+       CMAKE_CUDA_COMPILER_VERSION VERSION_LESS 11)
+        set(CMAKE_CUDA_EXTENSIONS OFF)
+    endif()
+
     find_package(CUDAToolkit) # TODO added in cmake 3.17 - copy this module
 endif()
 
