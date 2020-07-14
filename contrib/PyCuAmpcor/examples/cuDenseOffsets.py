@@ -100,6 +100,9 @@ def createParser():
     parser.add_argument('--gpuid', '--gid', '--gpu-id', dest='gpuid', type=int, default=-1,
                         help='GPU ID (default: %(default)s).')
 
+    parser.add_argument('-alg', '--algorithm', type=int, default=0
+       , help='algorithm to use (0 = frequency, 1 = spatial)')
+
     return parser
 
 
@@ -136,7 +139,7 @@ def estimateOffsetField(master, slave, inps=None):
 
     objOffset = PyCuAmpcor()
 
-    objOffset.algorithm = 0
+    objOffset.algorithm = inps.algorithm
     objOffset.deviceID = inps.gpuid  # -1:let system find the best GPU
     objOffset.nStreams = 2 #cudaStreams
     objOffset.derampMethod = inps.deramp
@@ -160,6 +163,10 @@ def estimateOffsetField(master, slave, inps=None):
         objOffset.numberWindowAcross = inps.numWinAcross
     print("offset field length: ",objOffset.numberWindowDown)
     print("offset field width: ",objOffset.numberWindowAcross)
+
+    gross_offset_down   = inps.azshift
+    gross_offset_across = inps.rgshift
+    objOffset.setConstantGrossOffset(gross_offset_down, gross_offset_across):
 
     # window size
     objOffset.windowSizeHeight = inps.winhgt
@@ -205,10 +212,10 @@ def estimateOffsetField(master, slave, inps=None):
     print("snr: ",objOffset.snrImageName)
     print("cov: ",objOffset.covImageName)
 
-    offsetImageName = objOffset.offsetImageName.decode('utf8')
-    grossOffsetImageName = objOffset.grossOffsetImageName.decode('utf8')
-    snrImageName = objOffset.snrImageName.decode('utf8')
-    covImageName = objOffset.covImageName.decode('utf8')
+    offsetImageName = objOffset.offsetImageName
+    grossOffsetImageName = objOffset.grossOffsetImageName
+    snrImageName = objOffset.snrImageName
+    covImageName = objOffset.covImageName
 
     print(offsetImageName)
     print(inps.redo)
