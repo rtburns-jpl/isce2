@@ -1,7 +1,7 @@
 add_subdirectory(db)
 add_subdirectory(TOPS)
 add_subdirectory(MultiMode)
-
+add_subdirectory(GRD)
 isce2_add_cdll(asa_im_decode src/asa_im_decode/asa_im_decode.c)
 
 set(installfiles
@@ -55,7 +55,6 @@ endif()
 
 Python_add_library(alos MODULE
     bindings/alosmodule.cpp
-    src/ALOS_pre_process/SConscript
     src/ALOS_pre_process/lib_functions.h
     src/ALOS_pre_process/read_ALOSE_data.c
     src/ALOS_pre_process/siocomplex.h

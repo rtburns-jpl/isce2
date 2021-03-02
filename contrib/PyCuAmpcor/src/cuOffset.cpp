@@ -4,7 +4,6 @@
  *
  */
 
-
 #include <hip/hip_runtime.h>
 #include "cuAmpcorUtil.h"
 #include "cudaUtil.h"
@@ -253,6 +252,7 @@ void cuDetermineSecondaryExtractOffset(cuArrays<int2> *maxLoc, cuArrays<int2> *m
     int threadsperblock=NTHREADS;
     int blockspergrid=IDIVUP(maxLoc->size, threadsperblock);
     hipLaunchKernelGGL(cudaKernel_determineSecondaryExtractOffset, dim3(blockspergrid), dim3(threadsperblock), 0, stream, maxLoc->devData, maxLocShift->devData, maxLoc->size, xOldRange, yOldRange, xNewRange, yNewRange);
+    getLastCudaError("cuDetermineSecondaryExtractOffset");
 }
 
 // end of file
