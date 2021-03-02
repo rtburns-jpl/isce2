@@ -5,8 +5,10 @@
  * This code is adapted from the nxcor package.
  */
 
-#include "cuAmpcorUtil.h"
 
+#include "cuAmpcorUtil.h"
+#include <hip/hip_runtime.h>
+#include <cmath>
 
 // cuda kernel for cuCorrTimeDomain
 template<const int nthreads, const int NPT>
@@ -30,7 +32,7 @@ __global__ void cuArraysCorrTime_kernel(
     const float *templateD = templateIn  + templateOffset + tid;
      float *  resultD =   resultOut +   resultOffset;
 
-    const int q  = min(nthreads/resultNY, 4);
+    const int q  = std::min(nthreads/resultNY, 4);
     const int nt = nthreads/q;
     const int ty = threadIdx.x / nt;
     const int tx = threadIdx.x - nt * ty;
@@ -101,7 +103,7 @@ __global__ void cuArraysCorrTime_kernel(
 void cuCorrTimeDomain(cuArrays<float> *templates,
                cuArrays<float> *images,
                cuArrays<float> *results,
-               cudaStream_t stream)
+               hipStream_t stream)
 {
     /* compute correlation matrix */
     const int nImages = images->count;
@@ -111,70 +113,70 @@ void cuCorrTimeDomain(cuArrays<float> *templates,
 
     const dim3 grid(nImages, (results->width-1)/NPT+1, 1);
     if      (imageNY <=   64) {
-        cuArraysCorrTime_kernel<  64,NPT><<<grid,  64, 0, stream>>>(nImages,
+        hipLaunchKernelGGL(HIP_KERNEL_NAME(cuArraysCorrTime_kernel<  64,NPT>), dim3(grid), dim3(64), 0, stream, nImages,
             templates->devData, templates->height, templates->width, templates->size,
             images->devData, images->height, images->width, images->size,
             results->devData, results->height, results->width, results->size);
         getLastCudaError("cuArraysCorrTime error");
     }
     else if (imageNY <=  128)  {
-        cuArraysCorrTime_kernel< 128,NPT><<<grid, 128, 0, stream>>>(nImages,
+        hipLaunchKernelGGL(HIP_KERNEL_NAME(cuArraysCorrTime_kernel< 128,NPT>), dim3(grid), dim3(128), 0, stream, nImages,
             templates->devData, templates->height, templates->width, templates->size,
             images->devData, images->height, images->width, images->size,
             results->devData, results->height, results->width, results->size);
         getLastCudaError("cuArraysCorrTime error");
     }
     else if (imageNY <=  192) {
-        cuArraysCorrTime_kernel< 192,NPT><<<grid, 192, 0, stream>>>(nImages,
+        hipLaunchKernelGGL(HIP_KERNEL_NAME(cuArraysCorrTime_kernel< 192,NPT>), dim3(grid), dim3(192), 0, stream, nImages,
             templates->devData, templates->height, templates->width, templates->size,
             images->devData, images->height, images->width, images->size,
             results->devData, results->height, results->width, results->size);
         getLastCudaError("cuArraysCorrTime error");
     }
     else if (imageNY <=  256) {
-        cuArraysCorrTime_kernel< 256,NPT><<<grid, 256, 0, stream>>>(nImages,
+        hipLaunchKernelGGL(HIP_KERNEL_NAME(cuArraysCorrTime_kernel< 256,NPT>), dim3(grid), dim3(256), 0, stream, nImages,
             templates->devData, templates->height, templates->width, templates->size,
             images->devData, images->height, images->width, images->size,
             results->devData, results->height, results->width, results->size);
         getLastCudaError("cuArraysCorrTime error");
     }
     else if (imageNY <=  384) {
-        cuArraysCorrTime_kernel< 384,NPT><<<grid, 384, 0, stream>>>(nImages,
+        hipLaunchKernelGGL(HIP_KERNEL_NAME(cuArraysCorrTime_kernel< 384,NPT>), dim3(grid), dim3(384), 0, stream, nImages,
             templates->devData, templates->height, templates->width, templates->size,
             images->devData, images->height, images->width, images->size,
             results->devData, results->height, results->width, results->size);
             getLastCudaError("cuArraysCorrTime error");
     }
     else if (imageNY <=  512) {
-        cuArraysCorrTime_kernel< 512,NPT><<<grid, 512, 0, stream>>>(nImages,
+        hipLaunchKernelGGL(HIP_KERNEL_NAME(cuArraysCorrTime_kernel< 512,NPT>), dim3(grid), dim3(512), 0, stream, nImages,
             templates->devData, templates->height, templates->width, templates->size,
             images->devData, images->height, images->width, images->size,
             results->devData, results->height, results->width, results->size);
         getLastCudaError("cuArraysCorrTime error");
     }
     else if (imageNY <=  640) {
-        cuArraysCorrTime_kernel< 640,NPT><<<grid, 640, 0, stream>>>(nImages,
+        hipLaunchKernelGGL(HIP_KERNEL_NAME(cuArraysCorrTime_kernel< 640,NPT>), dim3(grid), dim3(640), 0, stream, nImages,
             templates->devData, templates->height, templates->width, templates->size,
             images->devData, images->height, images->width, images->size,
             results->devData, results->height, results->width, results->size);
         getLastCudaError("cuArraysCorrTime error");
     }
     else if (imageNY <=  768) {
-        cuArraysCorrTime_kernel< 768,NPT><<<grid, 768, 0, stream>>>(nImages,
+        hipLaunchKernelGGL(HIP_KERNEL_NAME(cuArraysCorrTime_kernel< 768,NPT>), dim3(grid), dim3(768), 0, stream, nImages,
             templates->devData, templates->height, templates->width, templates->size,
             images->devData, images->height, images->width, images->size,
             results->devData, results->height, results->width, results->size);
         getLastCudaError("cuArraysCorrTime error");
     }
     else if (imageNY <=  896) {
-        cuArraysCorrTime_kernel< 896,NPT><<<grid, 896, 0, stream>>>(nImages,
+        hipLaunchKernelGGL(HIP_KERNEL_NAME(cuArraysCorrTime_kernel< 896,NPT>), dim3(grid), dim3(896), 0, stream, nImages,
             templates->devData, templates->height, templates->width, templates->size,
             images->devData, images->height, images->width, images->size,
             results->devData, results->height, results->width, results->size);
         getLastCudaError("cuArraysCorrTime error");
     }
     else if (imageNY <= 1024) {
-        cuArraysCorrTime_kernel<1024,NPT><<<grid,1024, 0, stream>>>(nImages,
+        hipLaunchKernelGGL(HIP_KERNEL_NAME(cuArraysCorrTime_kernel<1024,NPT>), dim3(grid), dim3(1024), 0, stream, nImages,
             templates->devData, templates->height, templates->width, templates->size,
             images->devData, images->height, images->width, images->size,
             results->devData, results->height, results->width, results->size);

@@ -75,7 +75,7 @@ public:
     }
 
     // load data from cpu buffer to gpu
-    void loadToDevice(void *dArray, size_t h_offset, size_t w_offset, size_t h_tile, size_t w_tile, cudaStream_t stream);
+    void loadToDevice(void *dArray, size_t h_offset, size_t w_offset, size_t h_tile, size_t w_tile, hipStream_t stream);
 
 };
 

@@ -6,9 +6,10 @@
 #include "cuAmpcorParameter.h"
 #include <stdio.h>
 
-#ifndef IDIVUP
-#define IDIVUP(i,j) ((i+j-1)/j)
-#endif
+template<typename T>
+T IDIVUP(T i, T j) {
+    return (i + j - 1) / j;
+}
 
 ///
 /// Constructor for cuAmpcorParameter class

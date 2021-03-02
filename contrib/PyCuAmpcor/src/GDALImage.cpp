@@ -5,6 +5,8 @@
  */
 
 // my declaration
+
+#include <hip/hip_runtime.h>
 #include "GDALImage.h"
 
 // dependencies
@@ -81,7 +83,7 @@ GDALImage::GDALImage(std::string filename, int band, int cacheSizeInGB, int useM
         _memPtr = CPLVirtualMemGetAddr(_poBandVirtualMem);
     }
     else { // use a buffer
-        checkCudaErrors(cudaMallocHost((void **)&_memPtr, _bufferSize));
+        checkCudaErrors(hipHostMalloc((void **)&_memPtr, _bufferSize));
     }
     // make sure memPtr is not Null
     if (!_memPtr)
@@ -104,7 +106,7 @@ GDALImage::GDALImage(std::string filename, int band, int cacheSizeInGB, int useM
  * @note Need to use size_t type to pass the parameters to cudaMemcpy2D correctly
  */
 void GDALImage::loadToDevice(void *dArray, size_t h_offset, size_t w_offset,
-    size_t h_tile, size_t w_tile, cudaStream_t stream)
+    size_t h_tile, size_t w_tile, hipStream_t stream)
 {
 
     size_t tileStartOffset = (h_offset*_width + w_offset)*_pixelSize;
@@ -114,13 +116,13 @@ void GDALImage::loadToDevice(void *dArray, size_t h_offset, size_t w_offset,
 
     if (_useMmap) {
         // direct copy from memory map buffer to device memory
-        checkCudaErrors(cudaMemcpy2DAsync(dArray, // dst
+        checkCudaErrors(hipMemcpy2DAsync(dArray, // dst
             w_tile*_pixelSize,                    // dst pitch
             startPtr,                             // src
             _width*_pixelSize,                    // src pitch
             w_tile*_pixelSize,                    // width in Bytes
             h_tile,                               // height
-            cudaMemcpyHostToDevice,stream));
+            hipMemcpyHostToDevice,stream));
     }
     else { // use a cpu buffer to load image data to gpu
 
@@ -130,8 +132,8 @@ void GDALImage::loadToDevice(void *dArray, size_t h_offset, size_t w_offset,
         if (tileSize > _bufferSize) {
             // TODO: fit the pagesize
             _bufferSize = tileSize;
-            checkCudaErrors(cudaFree(_memPtr));
-            checkCudaErrors(cudaMallocHost((void **)&_memPtr, _bufferSize));
+            checkCudaErrors(hipFree(_memPtr));
+            checkCudaErrors(hipHostMalloc((void **)&_memPtr, _bufferSize));
         }
         // copy from file to buffer
         CPLErr err = _poBand->RasterIO(GF_Read, //eRWFlag
@@ -146,7 +148,7 @@ void GDALImage::loadToDevice(void *dArray, size_t h_offset, size_t w_offset,
             throw; // throw if reading error occurs; message reported by GDAL
 
         // copy from buffer to gpu
-        checkCudaErrors(cudaMemcpyAsync(dArray, _memPtr, tileSize, cudaMemcpyHostToDevice, stream));
+        checkCudaErrors(hipMemcpyAsync(dArray, _memPtr, tileSize, hipMemcpyHostToDevice, stream));
     }
     // all done
 }

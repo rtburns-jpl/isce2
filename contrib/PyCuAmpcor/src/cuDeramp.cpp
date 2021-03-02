@@ -12,6 +12,8 @@
  *
  */
  
+
+#include <hip/hip_runtime.h>
 #include "cuArrays.h" 
 #include "float2.h" 
 #include <cfloat>
@@ -81,7 +83,7 @@ __global__ void cuDerampMethod1_kernel(float2 *images, const int imageNX, int co
         if(pixelIdxY < imageNY -1) {
             pixelIdx = i;
             float2 cprod = complexMulConj( image[pixelIdx], image[pixelIdx+1]);   
-            phaseDiffY += cprod;
+            phaseDiffY = phaseDiffY + cprod;
         } 
     }       
     complexSumReduceBlock<nthreads>(phaseDiffY, shmem);
@@ -94,7 +96,7 @@ __global__ void cuDerampMethod1_kernel(float2 *images, const int imageNX, int co
         if(pixelIdxX < imageNX -1) {
             pixelIdx = i;
             float2 cprod = complexMulConj(image[i], image[i+imageNY]);
-            phaseDiffX += cprod;
+            phaseDiffX = phaseDiffX + cprod;
         }
     }   
     
@@ -109,7 +111,7 @@ __global__ void cuDerampMethod1_kernel(float2 *images, const int imageNX, int co
         pixelIdxY = i/imageNY;
         float phase = pixelIdxX*phaseX + pixelIdxY*phaseY;
         float2 phase_factor = make_float2(cosf(phase), sinf(phase));
-        image[i] *= phase_factor;
+        image[i] = image[i] * phase_factor;
     }     
 }
 
@@ -120,7 +122,7 @@ __global__ void cuDerampMethod1_kernel(float2 *images, const int imageNX, int co
  * @param[inout] images input/output complex signals
  * @param[in] stream cuda stream
  */
-void cuDerampMethod1(cuArrays<float2> *images, cudaStream_t stream)
+void cuDerampMethod1(cuArrays<float2> *images, hipStream_t stream)
 {
     
     const dim3 grid(images->count);
@@ -128,26 +130,22 @@ void cuDerampMethod1(cuArrays<float2> *images, cudaStream_t stream)
     const float invSize = 1.0f/imageSize;
 
     if(imageSize <=64) {
-        cuDerampMethod1_kernel<64> <<<grid, 64, 0, stream>>>
-        (images->devData, images->height, images->width, 
+        hipLaunchKernelGGL(HIP_KERNEL_NAME(cuDerampMethod1_kernel<64>), dim3(grid), dim3(64), 0, stream, images->devData, images->height, images->width, 
         imageSize, images->count, invSize); }
      else if(imageSize <=128) {
-        cuDerampMethod1_kernel<128> <<<grid, 128, 0, stream>>>
-        (images->devData, images->height, images->width, 
+        hipLaunchKernelGGL(HIP_KERNEL_NAME(cuDerampMethod1_kernel<128>), dim3(grid), dim3(128), 0, stream, images->devData, images->height, images->width, 
         imageSize, images->count, invSize); }   
      else if(imageSize <=256) {
-        cuDerampMethod1_kernel<256> <<<grid, 256, 0, stream>>>
-        (images->devData, images->height, images->width, 
+        hipLaunchKernelGGL(HIP_KERNEL_NAME(cuDerampMethod1_kernel<256>), dim3(grid), dim3(256), 0, stream, images->devData, images->height, images->width, 
         imageSize, images->count, invSize); }  
     else  {
-        cuDerampMethod1_kernel<512> <<<grid, 512, 0, stream>>>
-        (images->devData, images->height, images->width, 
+        hipLaunchKernelGGL(HIP_KERNEL_NAME(cuDerampMethod1_kernel<512>), dim3(grid), dim3(512), 0, stream, images->devData, images->height, images->width, 
         imageSize, images->count, invSize); }
     getLastCudaError("cuDerampMethod1 kernel error\n");
 
 }
         
-void cuDeramp(int method, cuArrays<float2> *images, cudaStream_t stream)
+void cuDeramp(int method, cuArrays<float2> *images, hipStream_t stream)
 {
     switch(method) {
     case 1:

@@ -4,7 +4,10 @@
  *
  */
 
+
+#include <hip/hip_runtime.h>
 #include "cuAmpcorUtil.h"
+#include "cudaUtil.h"
 #include <cfloat>
 
 // find the max between two elements
@@ -90,10 +93,9 @@ __global__ void  cudaKernel_maxloc2D(const float* const images, int2* maxloc, fl
  * @note This routine is overloaded with the routine without maxval
  */
 void cuArraysMaxloc2D(cuArrays<float> *images, cuArrays<int2> *maxloc,
-                      cuArrays<float> *maxval, cudaStream_t stream)
+                      cuArrays<float> *maxval, hipStream_t stream)
 {
-    cudaKernel_maxloc2D<NTHREADS><<<images->count, NTHREADS, 0, stream>>>
-        (images->devData, maxloc->devData, maxval->devData, images->height, images->width, images->count);
+    hipLaunchKernelGGL(HIP_KERNEL_NAME(cudaKernel_maxloc2D<NTHREADS>), dim3(images->count), dim3(NTHREADS), 0, stream, images->devData, maxloc->devData, maxval->devData, images->height, images->width, images->count);
     getLastCudaError("cudaKernel find max location 2D error\n");
 }
 
@@ -124,10 +126,9 @@ __global__ void  cudaKernel_maxloc2D(const float* const images, int2* maxloc, co
  * @param[in] stream cudaStream
  * @note This routine is overloaded with the routine with maxval
  */
-void cuArraysMaxloc2D(cuArrays<float> *images, cuArrays<int2> *maxloc, cudaStream_t stream)
+void cuArraysMaxloc2D(cuArrays<float> *images, cuArrays<int2> *maxloc, hipStream_t stream)
 {
-    cudaKernel_maxloc2D<NTHREADS><<<images->count, NTHREADS, 0, stream>>>
-        (images->devData, maxloc->devData, images->height, images->width, images->count);
+    hipLaunchKernelGGL(HIP_KERNEL_NAME(cudaKernel_maxloc2D<NTHREADS>), dim3(images->count), dim3(NTHREADS), 0, stream, images->devData, maxloc->devData, images->height, images->width, images->count);
     getLastCudaError("cudaKernel find max location 2D error\n");
 }
 
@@ -170,15 +171,14 @@ void cuSubPixelOffset(cuArrays<int2> *offsetInit, cuArrays<int2> *offsetZoomIn,
     cuArrays<float2> *offsetFinal,
     int OverSampleRatioZoomin, int OverSampleRatioRaw,
     int xHalfRangeInit,  int yHalfRangeInit,
-    cudaStream_t stream)
+    hipStream_t stream)
 {
     int size = offsetInit->getSize();
     float OSratio = 1.0f/(float)(OverSampleRatioZoomin*OverSampleRatioRaw);
     float xoffset = xHalfRangeInit ;
     float yoffset = yHalfRangeInit ;
 
-    cuSubPixelOffset_kernel<<<IDIVUP(size, NTHREADS), NTHREADS, 0, stream>>>
-        (offsetInit->devData, offsetZoomIn->devData,
+    hipLaunchKernelGGL(cuSubPixelOffset_kernel, dim3(IDIVUP(size, NTHREADS)), dim3(NTHREADS), 0, stream, offsetInit->devData, offsetZoomIn->devData,
          offsetFinal->devData, OSratio, xoffset, yoffset, size);
     getLastCudaError("cuSubPixelOffset_kernel");
 
@@ -248,12 +248,11 @@ __global__ void cudaKernel_determineSecondaryExtractOffset(int2 * maxLoc, int2 *
  *  This procedure is used to determine the starting pixel locations for extraction.
  */
 void cuDetermineSecondaryExtractOffset(cuArrays<int2> *maxLoc, cuArrays<int2> *maxLocShift,
-    int xOldRange, int yOldRange, int xNewRange, int yNewRange, cudaStream_t stream)
+    int xOldRange, int yOldRange, int xNewRange, int yNewRange, hipStream_t stream)
 {
     int threadsperblock=NTHREADS;
     int blockspergrid=IDIVUP(maxLoc->size, threadsperblock);
-    cudaKernel_determineSecondaryExtractOffset<<<blockspergrid, threadsperblock, 0, stream>>>
-        (maxLoc->devData, maxLocShift->devData, maxLoc->size, xOldRange, yOldRange, xNewRange, yNewRange);
+    hipLaunchKernelGGL(cudaKernel_determineSecondaryExtractOffset, dim3(blockspergrid), dim3(threadsperblock), 0, stream, maxLoc->devData, maxLocShift->devData, maxLoc->size, xOldRange, yOldRange, xNewRange, yNewRange);
 }
 
 // end of file

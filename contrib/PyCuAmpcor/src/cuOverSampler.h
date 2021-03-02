@@ -14,22 +14,24 @@
 #include "cuArrays.h"
 #include "cudaUtil.h"
 
+#include <hipfft.h>
+
 // FFT Oversampler for complex images
 class cuOverSamplerC2C
 {
 private:
-     cufftHandle forwardPlan;   // forward fft handle
-     cufftHandle backwardPlan;  // backward fft handle
-     cudaStream_t stream;       // cuda stream
+     hipfftHandle forwardPlan;   // forward fft handle
+     hipfftHandle backwardPlan;  // backward fft handle
+     hipStream_t stream;       // cuda stream
      cuArrays<float2> *workIn;  // work array to hold forward fft data
      cuArrays<float2> *workOut; // work array to hold padded data
 public:
      // disable the default constructor
      cuOverSamplerC2C() = delete;
      // constructor
-     cuOverSamplerC2C(int inNX, int inNY, int outNX, int outNY, int nImages, cudaStream_t stream_);
+     cuOverSamplerC2C(int inNX, int inNY, int outNX, int outNY, int nImages, hipStream_t stream_);
      // set cuda stream
-     void setStream(cudaStream_t stream_);
+     void setStream(hipStream_t stream_);
      // execute oversampling
      void execute(cuArrays<float2> *imagesIn, cuArrays<float2> *imagesOut, int deramp_method=0);
      // destructor
@@ -40,16 +42,16 @@ public:
 class cuOverSamplerR2R
 {
 private:
-     cufftHandle forwardPlan;
-     cufftHandle backwardPlan;
-     cudaStream_t stream;
+     hipfftHandle forwardPlan;
+     hipfftHandle backwardPlan;
+     hipStream_t stream;
      cuArrays<float2> *workSizeIn;
      cuArrays<float2> *workSizeOut;
 
 public:
     cuOverSamplerR2R() = delete;
-    cuOverSamplerR2R(int inNX, int inNY, int outNX, int outNY, int nImages, cudaStream_t stream_);
-    void setStream(cudaStream_t stream_);
+    cuOverSamplerR2R(int inNX, int inNY, int outNX, int outNY, int nImages, hipStream_t stream_);
+    void setStream(hipStream_t stream_);
     void execute(cuArrays<float> *imagesIn, cuArrays<float> *imagesOut);
     ~cuOverSamplerR2R();
 };

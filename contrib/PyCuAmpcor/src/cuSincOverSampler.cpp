@@ -5,6 +5,8 @@
  */
 
 // my declaration
+
+#include <hip/hip_runtime.h>
 #include "cuSincOverSampler.h"
 
 // dependencies
@@ -18,20 +20,20 @@
  * @param i_covs oversampling factor
  * @param stream cuda stream
  */
-cuSincOverSamplerR2R::cuSincOverSamplerR2R(const int i_covs_, cudaStream_t stream_)
+cuSincOverSamplerR2R::cuSincOverSamplerR2R(const int i_covs_, hipStream_t stream_)
  : i_covs(i_covs_)
 {
     stream = stream_;
     i_intplength = int(r_relfiltlen/r_beta+0.5f);
     i_filtercoef = i_intplength*i_decfactor;
-    checkCudaErrors(cudaMalloc((void **)&r_filter, (i_filtercoef+1)*sizeof(float)));
+    checkCudaErrors(hipMalloc((void **)&r_filter, (i_filtercoef+1)*sizeof(float)));
     cuSetupSincKernel();
 }
 
 /// destructor
 cuSincOverSamplerR2R::~cuSincOverSamplerR2R()
 {
-    checkCudaErrors(cudaFree(r_filter));
+    checkCudaErrors(hipFree(r_filter));
 }
 
 // cuda kernel for cuSetupSincKernel
@@ -73,8 +75,7 @@ void cuSincOverSamplerR2R::cuSetupSincKernel()
     float r_soff_inverse = 1.0f/r_soff;
     float r_decfactor_inverse = 1.0f/i_decfactor;
 
-    cuSetupSincKernel_kernel<<<nblocks, nthreads, 0, stream>>> (
-        r_filter, i_filtercoef, r_soff, r_wgthgt, i_weight,
+    hipLaunchKernelGGL(cuSetupSincKernel_kernel, dim3(nblocks), dim3(nthreads), 0, stream, r_filter, i_filtercoef, r_soff, r_wgthgt, i_weight,
         r_soff_inverse, r_beta, r_decfactor_inverse);
     getLastCudaError("cuSetupSincKernel_kernel");
 }
@@ -186,7 +187,7 @@ void cuSincOverSamplerR2R::execute(cuArrays<float> *imagesIn, cuArrays<float> *i
     static const int nthreads = 16;
     dim3 threadsperblock(nthreads, nthreads, 1);
     dim3 blockspergrid (IDIVUP(i_int_size, nthreads), IDIVUP(i_int_size, nthreads), nImages);
-    cuSincInterpolation_kernel<<<blockspergrid, threadsperblock, 0, stream>>>(nImages,
+    hipLaunchKernelGGL(cuSincInterpolation_kernel, dim3(blockspergrid), dim3(threadsperblock), 0, stream, nImages,
         imagesIn->devData, inNX, inNY,
         imagesOut->devData, outNX, outNY,
         centerShift->devData, rawOversamplingFactor,

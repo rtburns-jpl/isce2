@@ -46,11 +46,11 @@ class cuSincOverSamplerR2R
 
     float * r_filter;   // sinc kernel with size i_filtercoef
 
-    cudaStream_t stream;
+    hipStream_t stream;
 
  public:
     // constructor
-    cuSincOverSamplerR2R(const int i_covs_, cudaStream_t stream_);
+    cuSincOverSamplerR2R(const int i_covs_, hipStream_t stream_);
     // set up sinc interpolation coefficients
     void cuSetupSincKernel();
     // execute interface

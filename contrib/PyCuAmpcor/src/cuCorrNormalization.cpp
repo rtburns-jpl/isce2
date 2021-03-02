@@ -19,6 +19,8 @@
  *
  */
 
+
+#include <hip/hip_runtime.h>
 #include "cuAmpcorUtil.h"
 #include <cfloat>
 #include <stdio.h>
@@ -84,13 +86,13 @@ __global__ void cuArraysMean_kernel(float *images, float *image_sum, int imageSi
  * @param[out] mean Output mean values
  * @param[in] stream cudaStream
  */
-void cuArraysMeanValue(cuArrays<float> *images, cuArrays<float> *mean, cudaStream_t stream)
+void cuArraysMeanValue(cuArrays<float> *images, cuArrays<float> *mean, hipStream_t stream)
 {
     const dim3 grid(images->count, 1, 1);
     const int imageSize = images->width*images->height;
     const float invSize = 1.0f/imageSize;
 
-    cuArraysMean_kernel<NTHREADS> <<<grid,NTHREADS,0,stream>>>(images->devData, mean->devData, imageSize, invSize, images->count);
+    hipLaunchKernelGGL(HIP_KERNEL_NAME(cuArraysMean_kernel<NTHREADS>), dim3(grid), dim3(NTHREADS), 0, stream, images->devData, mean->devData, imageSize, invSize, images->count);
     getLastCudaError("cuArraysMeanValue kernel error\n");
 }
 
@@ -128,13 +130,13 @@ __global__ void cuArraysSubtractMean_kernel(float *images, int imageSize, float 
  * @param[out] mean Output mean values
  * @param[in] stream cudaStream
  */
-void cuArraysSubtractMean(cuArrays<float> *images, cudaStream_t stream)
+void cuArraysSubtractMean(cuArrays<float> *images, hipStream_t stream)
 {
     const dim3 grid(images->count, 1, 1);
     const int imageSize = images->width*images->height;
     const float invSize = 1.0f/imageSize;
 
-    cuArraysSubtractMean_kernel<NTHREADS> <<<grid,NTHREADS,0,stream>>>(images->devData, imageSize, invSize, images->count);
+    hipLaunchKernelGGL(HIP_KERNEL_NAME(cuArraysSubtractMean_kernel<NTHREADS>), dim3(grid), dim3(NTHREADS), 0, stream, images->devData, imageSize, invSize, images->count);
     getLastCudaError("cuArraysSubtractMean kernel error\n");
 }
 
@@ -181,12 +183,12 @@ __global__ void cuArraysSumCorr_kernel(float *images, int *imagesValid, float *i
  * @param[in] stream cudaStream
  */
 void cuArraysSumCorr(cuArrays<float> *images, cuArrays<int> *imagesValid, cuArrays<float> *imagesSum,
-    cuArrays<int> *imagesValidCount, cudaStream_t stream)
+    cuArrays<int> *imagesValidCount, hipStream_t stream)
 {
     const dim3 grid(images->count, 1, 1);
     const int imageSize = images->width*images->height;
 
-    cuArraysSumCorr_kernel<NTHREADS> <<<grid,NTHREADS,0,stream>>>(images->devData, imagesValid->devData,
+    hipLaunchKernelGGL(HIP_KERNEL_NAME(cuArraysSumCorr_kernel<NTHREADS>), dim3(grid), dim3(NTHREADS), 0, stream, images->devData, imagesValid->devData,
         imagesSum->devData, imagesValidCount->devData, imageSize, images->count);
     getLastCudaError("cuArraysSumValueCorr kernel error\n");
 }
@@ -289,7 +291,7 @@ __global__ void cuCorrNormalize_kernel(
         // normalizing factor
         const float norm2 = (imageSum2 - imageSum*imageSum*templateCoeff)*templateSum2;
         // normalize the correlation surface
-        resultD[tid] *= rsqrtf(norm2 + FLT_EPSILON);
+        resultD[tid] /= sqrtf(norm2 + FLT_EPSILON);
     }
     // iterative over the rest rows
     while (iaddr < imageSize)
@@ -308,7 +310,7 @@ __global__ void cuCorrNormalize_kernel(
             const int ix = iaddr/imageNY; // get row index
             const int addr = (ix-templateNX)*resultNY; // get the correlation surface row index
             const float norm2 = (imageSum2 - imageSum*imageSum*templateCoeff)*templateSum2;
-            resultD[addr + tid] *= rsqrtf(norm2 + FLT_EPSILON);
+            resultD[addr + tid] /= sqrtf(norm2 + FLT_EPSILON);
         }
     }
 }
@@ -323,7 +325,7 @@ __global__ void cuCorrNormalize_kernel(
  *   the secondary window width is limited to <=1024, the max threads in a block.
  * @todo an implementation for arbitrary window width, might not be as efficient
  */
-void cuCorrNormalize(cuArrays<float> *templates, cuArrays<float> *images, cuArrays<float> *results, cudaStream_t stream)
+void cuCorrNormalize(cuArrays<float> *templates, cuArrays<float> *images, cuArrays<float> *results, hipStream_t stream)
 {
     const int nImages = images->count;
     const int imageNY = images->width;
@@ -331,7 +333,7 @@ void cuCorrNormalize(cuArrays<float> *templates, cuArrays<float> *images, cuArra
     const float invTemplateSize = 1.0f/templates->size;
 
     if      (imageNY <=   64) {
-        cuCorrNormalize_kernel< 6><<<grid,  64, 0, stream>>>(nImages,
+        hipLaunchKernelGGL(HIP_KERNEL_NAME(cuCorrNormalize_kernel< 6>), dim3(grid), dim3(64), 0, stream, nImages,
             templates->devData, templates->height, templates->width, templates->size,
             images->devData, images->height, images->width, images->size,
             results->devData, results->height, results->width, results->size,
@@ -339,7 +341,7 @@ void cuCorrNormalize(cuArrays<float> *templates, cuArrays<float> *images, cuArra
         getLastCudaError("cuCorrNormalize kernel error");
     }
     else if (imageNY <=  128) {
-        cuCorrNormalize_kernel< 7><<<grid, 128, 0, stream>>>(nImages,
+        hipLaunchKernelGGL(HIP_KERNEL_NAME(cuCorrNormalize_kernel< 7>), dim3(grid), dim3(128), 0, stream, nImages,
             templates->devData, templates->height, templates->width, templates->size,
             images->devData, images->height, images->width, images->size,
             results->devData, results->height, results->width, results->size,
@@ -347,7 +349,7 @@ void cuCorrNormalize(cuArrays<float> *templates, cuArrays<float> *images, cuArra
         getLastCudaError("cuCorrNormalize kernel error");
     }
     else if (imageNY <=  256) {
-        cuCorrNormalize_kernel< 8><<<grid, 256, 0, stream>>>(nImages,
+        hipLaunchKernelGGL(HIP_KERNEL_NAME(cuCorrNormalize_kernel< 8>), dim3(grid), dim3(256), 0, stream, nImages,
             templates->devData, templates->height, templates->width, templates->size,
             images->devData, images->height, images->width, images->size,
             results->devData, results->height, results->width, results->size,
@@ -355,7 +357,7 @@ void cuCorrNormalize(cuArrays<float> *templates, cuArrays<float> *images, cuArra
         getLastCudaError("cuCorrNormalize kernel error");
     }
     else if (imageNY <=  512) {
-        cuCorrNormalize_kernel< 9><<<grid, 512, 0, stream>>>(nImages,
+        hipLaunchKernelGGL(HIP_KERNEL_NAME(cuCorrNormalize_kernel< 9>), dim3(grid), dim3(512), 0, stream, nImages,
             templates->devData, templates->height, templates->width, templates->size,
             images->devData, images->height, images->width, images->size,
             results->devData, results->height, results->width, results->size,
@@ -363,7 +365,7 @@ void cuCorrNormalize(cuArrays<float> *templates, cuArrays<float> *images, cuArra
         getLastCudaError("cuCorrNormalize kernel error");
     }
     else if (imageNY <= 1024) {
-        cuCorrNormalize_kernel<10><<<grid,1024, 0, stream>>>(nImages,
+        hipLaunchKernelGGL(HIP_KERNEL_NAME(cuCorrNormalize_kernel<10>), dim3(grid), dim3(1024), 0, stream, nImages,
             templates->devData, templates->height, templates->width, templates->size,
             images->devData, images->height, images->width, images->size,
             results->devData, results->height, results->width, results->size,

@@ -1,3 +1,5 @@
+
+#include <hip/hip_runtime.h>
 #include "cuAmpcorChunk.h"
 #include "cuAmpcorUtil.h"
 
@@ -369,7 +371,7 @@ void cuAmpcorChunk::loadSecondaryChunk()
 /// constructor
 cuAmpcorChunk::cuAmpcorChunk(cuAmpcorParameter *param_, GDALImage *reference_, GDALImage *secondary_,
     cuArrays<float2> *offsetImage_, cuArrays<float> *snrImage_, cuArrays<float3> *covImage_,
-    cudaStream_t stream_)
+    hipStream_t stream_)
 
 {
     param = param_;

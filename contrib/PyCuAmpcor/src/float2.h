@@ -7,7 +7,7 @@
 #ifndef __FLOAT2_H
 #define __FLOAT2_H
 
-#include <vector_types.h>
+#include <hip/hip_vector_types.h>
 
 inline __host__ __device__ void zero(float2 &a) { a.x = 0.0f; a.y = 0.0f; }
 

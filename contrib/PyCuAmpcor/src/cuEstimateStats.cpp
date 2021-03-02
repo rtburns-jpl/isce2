@@ -5,6 +5,8 @@
  * 9/23/2017, Minyan Zhong
  */
 
+
+#include <hip/hip_runtime.h>
 #include "cuArrays.h"
 #include "float2.h"
 #include <cfloat>
@@ -36,12 +38,11 @@ __global__ void cudaKernel_estimateSnr(const float* corrSum, const int* corrVali
  * @param[out] snrValue return snr value
  * @param[in] stream cuda stream
  */
-void cuEstimateSnr(cuArrays<float> *corrSum, cuArrays<int> *corrValidCount, cuArrays<float> *maxval, cuArrays<float> *snrValue, cudaStream_t stream)
+void cuEstimateSnr(cuArrays<float> *corrSum, cuArrays<int> *corrValidCount, cuArrays<float> *maxval, cuArrays<float> *snrValue, hipStream_t stream)
 {
 
     int size = corrSum->getSize();
-    cudaKernel_estimateSnr<<< IDIVUP(size, NTHREADS), NTHREADS, 0, stream>>>
-        (corrSum->devData, corrValidCount->devData, maxval->devData, snrValue->devData, size);
+    hipLaunchKernelGGL(cudaKernel_estimateSnr, dim3(IDIVUP(size, NTHREADS)), dim3(NTHREADS), 0, stream, corrSum->devData, corrValidCount->devData, maxval->devData, snrValue->devData, size);
     getLastCudaError("cuda kernel estimate stats error\n");
 }
 
@@ -119,12 +120,11 @@ __global__ void cudaKernel_estimateVar(const float* corrBatchRaw, const int NX, 
  * @param[out] covValue variance value
  * @param[in] stream cuda stream
  */
-void cuEstimateVariance(cuArrays<float> *corrBatchRaw, cuArrays<int2> *maxloc, cuArrays<float> *maxval, cuArrays<float3> *covValue, cudaStream_t stream)
+void cuEstimateVariance(cuArrays<float> *corrBatchRaw, cuArrays<int2> *maxloc, cuArrays<float> *maxval, cuArrays<float3> *covValue, hipStream_t stream)
 {
     int size = corrBatchRaw->count;
     // One dimensional launching parameters to loop over every correlation surface.
-    cudaKernel_estimateVar<<< IDIVUP(size, NTHREADS), NTHREADS, 0, stream>>>
-        (corrBatchRaw->devData, corrBatchRaw->height, corrBatchRaw->width, maxloc->devData, maxval->devData, covValue->devData, size);
+    hipLaunchKernelGGL(cudaKernel_estimateVar, dim3(IDIVUP(size, NTHREADS)), dim3(NTHREADS), 0, stream, corrBatchRaw->devData, corrBatchRaw->height, corrBatchRaw->width, maxloc->devData, maxval->devData, covValue->devData, size);
     getLastCudaError("cudaKernel_estimateVar error\n");
 }
 //end of file

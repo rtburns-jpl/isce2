@@ -12,8 +12,7 @@
 #define __CUARRAYS_H
 
 // cuda dependencies
-#include <cuda.h>
-#include <driver_types.h>
+#include <hip/hip_runtime_api.h>
 
 #include <iostream>
 #include <fstream>
@@ -74,8 +73,8 @@ public:
     void deallocateHost();
 
     // copy data between device and host memories
-    void copyToHost(cudaStream_t stream);
-    void copyToDevice(cudaStream_t stream);
+    void copyToHost(hipStream_t stream);
+    void copyToDevice(hipStream_t stream);
 
     // get the total size
     size_t getSize()
@@ -99,12 +98,12 @@ public:
     }
 
     // set zeroes
-    void setZero(cudaStream_t stream);
+    void setZero(hipStream_t stream);
     // output when debugging
-    void debuginfo(cudaStream_t stream) ;
-    void debuginfo(cudaStream_t stream, float factor);
+    void debuginfo(hipStream_t stream) ;
+    void debuginfo(hipStream_t stream, float factor);
     // write to files
-    void outputToFile(std::string fn, cudaStream_t stream);
+    void outputToFile(std::string fn, hipStream_t stream);
     void outputHostToFile(std::string fn);
 
 };

@@ -7,26 +7,30 @@
 #ifndef __CUCORRFREQUENCY_H
 #define __CUCORRFREQUENCY_H
 
+#include <hip/hip_runtime.h>
+
 // dependencies
 #include "cudaUtil.h"
 #include "cuArrays.h"
+
+#include <hipfft.h>
 
 class cuFreqCorrelator
 {
 private:
     // handles for forward/backward fft
-    cufftHandle forwardPlan;
-    cufftHandle backwardPlan;
+    hipfftHandle forwardPlan;
+    hipfftHandle backwardPlan;
     // work data
     cuArrays<float2> *workFM;
     cuArrays<float2> *workFS;
     cuArrays<float> *workT;
     // cuda stream
-    cudaStream_t stream;
+    hipStream_t stream;
 
 public:
     // constructor
-    cuFreqCorrelator(int imageNX, int imageNY, int nImages, cudaStream_t stream_);
+    cuFreqCorrelator(int imageNX, int imageNY, int nImages, hipStream_t stream_);
     // destructor
     ~cuFreqCorrelator();
     // executor

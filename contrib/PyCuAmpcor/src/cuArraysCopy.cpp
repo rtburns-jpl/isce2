@@ -21,6 +21,8 @@
 
 
 // dependencies
+
+#include <hip/hip_runtime.h>
 #include "cuArrays.h"
 #include "cudaUtil.h"
 #include "cudaError.h"
@@ -53,13 +55,12 @@ __global__ void cuArraysCopyToBatch_kernel(const float2 *imageIn, const int inNX
  * @param stream cudaStream
  */
 void cuArraysCopyToBatch(cuArrays<float2> *image1, cuArrays<float2> *image2,
-    int strideH, int strideW, cudaStream_t stream)
+    int strideH, int strideW, hipStream_t stream)
 {
     const int nthreads = NTHREADS2D;
     dim3 blockSize(nthreads, nthreads, 1);
     dim3 gridSize(IDIVUP(image2->height,nthreads), IDIVUP(image2->width,nthreads), image2->count);
-    cuArraysCopyToBatch_kernel<<<gridSize,blockSize, 0 , stream>>> (
-        image1->devData, image1->height, image1->width,
+    hipLaunchKernelGGL(cuArraysCopyToBatch_kernel, dim3(gridSize), dim3(blockSize), 0, stream, image1->devData, image1->height, image1->width,
         image2->devData, image2->height, image2->width,
         image2->countH, image2->countW,
         strideH, strideW);
@@ -91,13 +92,12 @@ __global__ void cuArraysCopyToBatchWithOffset_kernel(const float2 *imageIn, cons
  * @param stream cudaStream
  */
 void cuArraysCopyToBatchWithOffset(cuArrays<float2> *image1, const int lda1, cuArrays<float2> *image2,
-    const int *offsetH, const int* offsetW, cudaStream_t stream)
+    const int *offsetH, const int* offsetW, hipStream_t stream)
 {
     const int nthreads = 16;
     dim3 blockSize(nthreads, nthreads, 1);
     dim3 gridSize(IDIVUP(image2->height,nthreads), IDIVUP(image2->width,nthreads), image2->count);
-    cuArraysCopyToBatchWithOffset_kernel<<<gridSize,blockSize, 0 , stream>>> (
-        image1->devData, lda1,
+    hipLaunchKernelGGL(cuArraysCopyToBatchWithOffset_kernel, dim3(gridSize), dim3(blockSize), 0, stream, image1->devData, lda1,
         image2->devData, image2->height, image2->width, image2->count,
         offsetH, offsetW);
     getLastCudaError("cuArraysCopyToBatchAbsWithOffset_kernel");
@@ -128,13 +128,12 @@ __global__ void cuArraysCopyToBatchAbsWithOffset_kernel(const float2 *imageIn, c
  * @param stream cudaStream
  */
 void cuArraysCopyToBatchAbsWithOffset(cuArrays<float2> *image1, const int lda1, cuArrays<float2> *image2,
-    const int *offsetH, const int* offsetW, cudaStream_t stream)
+    const int *offsetH, const int* offsetW, hipStream_t stream)
 {
     const int nthreads = 16;
     dim3 blockSize(nthreads, nthreads, 1);
     dim3 gridSize(IDIVUP(image2->height,nthreads), IDIVUP(image2->width,nthreads), image2->count);
-    cuArraysCopyToBatchAbsWithOffset_kernel<<<gridSize,blockSize, 0 , stream>>> (
-        image1->devData, lda1,
+    hipLaunchKernelGGL(cuArraysCopyToBatchAbsWithOffset_kernel, dim3(gridSize), dim3(blockSize), 0, stream, image1->devData, lda1,
         image2->devData, image2->height, image2->width, image2->count,
         offsetH, offsetW);
     getLastCudaError("cuArraysCopyToBatchAbsWithOffset_kernel");
@@ -165,13 +164,12 @@ __global__ void cuArraysCopyToBatchWithOffsetR2C_kernel(const float *imageIn, co
  * @param stream cudaStream
  */
 void cuArraysCopyToBatchWithOffsetR2C(cuArrays<float> *image1, const int lda1, cuArrays<float2> *image2,
-    const int *offsetH, const int* offsetW, cudaStream_t stream)
+    const int *offsetH, const int* offsetW, hipStream_t stream)
 {
     const int nthreads = 16;
     dim3 blockSize(nthreads, nthreads, 1);
     dim3 gridSize(IDIVUP(image2->height,nthreads), IDIVUP(image2->width,nthreads), image2->count);
-    cuArraysCopyToBatchWithOffsetR2C_kernel<<<gridSize,blockSize, 0 , stream>>> (
-        image1->devData, lda1,
+    hipLaunchKernelGGL(cuArraysCopyToBatchWithOffsetR2C_kernel, dim3(gridSize), dim3(blockSize), 0, stream, image1->devData, lda1,
         image2->devData, image2->height, image2->width, image2->count,
         offsetH, offsetW);
     getLastCudaError("cuArraysCopyToBatchWithOffsetR2C_kernel");
@@ -204,14 +202,13 @@ __global__ void cuArraysCopyC2R_kernel(const float2 *imageIn, const int inNX, co
  * @param stream cudaStream
  */
 void cuArraysCopyC2R(cuArrays<float2> *image1, cuArrays<float> *image2,
-    int strideH, int strideW, cudaStream_t stream)
+    int strideH, int strideW, hipStream_t stream)
 {
     const int nthreads = 16;
     dim3 blockSize(nthreads, nthreads, 1);
     dim3 gridSize(IDIVUP(image2->height,nthreads), IDIVUP(image2->width,nthreads), image2->count);
     float factor = 1.0f/image1->size; //the FFT factor
-    cuArraysCopyC2R_kernel<<<gridSize,blockSize, 0 , stream>>> (
-        image1->devData, image1->height, image1->width,
+    hipLaunchKernelGGL(cuArraysCopyC2R_kernel, dim3(gridSize), dim3(blockSize), 0, stream, image1->devData, image1->height, image1->width,
         image2->devData, image2->height, image2->width,
         image2->countH, image2->countW,
         strideH, strideW, factor);
@@ -241,13 +238,13 @@ __global__ void cuArraysCopyExtractVaryingOffset(const float *imageIn, const int
  * @param[out] imageOut output images of dimension nImages*outNX*outNY
  * @param[in] offsets, varying offsets for extraction
  */
-void cuArraysCopyExtract(cuArrays<float> *imagesIn, cuArrays<float> *imagesOut, cuArrays<int2> *offsets, cudaStream_t stream)
+void cuArraysCopyExtract(cuArrays<float> *imagesIn, cuArrays<float> *imagesOut, cuArrays<int2> *offsets, hipStream_t stream)
 {
     //assert(imagesIn->height >= imagesOut && inNY >= outNY);
     const int nthreads = 16;
     dim3 threadsperblock(nthreads, nthreads,1);
     dim3 blockspergrid(IDIVUP(imagesOut->height,nthreads), IDIVUP(imagesOut->width,nthreads), imagesOut->count);
-    cuArraysCopyExtractVaryingOffset<<<blockspergrid, threadsperblock,0, stream>>>(imagesIn->devData, imagesIn->height, imagesIn->width,
+    hipLaunchKernelGGL(cuArraysCopyExtractVaryingOffset, dim3(blockspergrid), dim3(threadsperblock), 0, stream, imagesIn->devData, imagesIn->height, imagesIn->width,
         imagesOut->devData, imagesOut->height, imagesOut->width, imagesOut->count, offsets->devData);
     getLastCudaError("cuArraysCopyExtract error");
 }
@@ -275,13 +272,13 @@ __global__ void cuArraysCopyExtractVaryingOffset_C2C(const float2 *imageIn, cons
  * @param[out] imageOut output images of dimension nImages*outNX*outNY
  * @param[in] offsets, varying offsets for extraction
  */
-void cuArraysCopyExtract(cuArrays<float2> *imagesIn, cuArrays<float2> *imagesOut, cuArrays<int2> *offsets, cudaStream_t stream)
+void cuArraysCopyExtract(cuArrays<float2> *imagesIn, cuArrays<float2> *imagesOut, cuArrays<int2> *offsets, hipStream_t stream)
 {
     //assert(imagesIn->height >= imagesOut && inNY >= outNY);
     const int nthreads = 16;
     dim3 threadsperblock(nthreads, nthreads,1);
     dim3 blockspergrid(IDIVUP(imagesOut->height,nthreads), IDIVUP(imagesOut->width,nthreads), imagesOut->count);
-    cuArraysCopyExtractVaryingOffset_C2C<<<blockspergrid, threadsperblock,0, stream>>>(imagesIn->devData, imagesIn->height, imagesIn->width,
+    hipLaunchKernelGGL(cuArraysCopyExtractVaryingOffset_C2C, dim3(blockspergrid), dim3(threadsperblock), 0, stream, imagesIn->devData, imagesIn->height, imagesIn->width,
         imagesOut->devData, imagesOut->height, imagesOut->width, imagesOut->count, offsets->devData);
     getLastCudaError("cuArraysCopyExtractC2C error");
 
@@ -331,7 +328,7 @@ __global__ void cuArraysCopyExtractVaryingOffsetCorr(const float *imageIn, const
  * @param[in] imageIn inut images
  * @param[out] imageOut output images of dimension nImages*outNX*outNY
  */
-void cuArraysCopyExtractCorr(cuArrays<float> *imagesIn, cuArrays<float> *imagesOut, cuArrays<int> *imagesValid, cuArrays<int2> *maxloc, cudaStream_t stream)
+void cuArraysCopyExtractCorr(cuArrays<float> *imagesIn, cuArrays<float> *imagesOut, cuArrays<int> *imagesValid, cuArrays<int2> *maxloc, hipStream_t stream)
 {
     //assert(imagesIn->height >= imagesOut && inNY >= outNY);
     const int nthreads = 16;
@@ -340,7 +337,7 @@ void cuArraysCopyExtractCorr(cuArrays<float> *imagesIn, cuArrays<float> *imagesO
 
     dim3 blockspergrid(IDIVUP(imagesOut->height,nthreads), IDIVUP(imagesOut->width,nthreads), imagesOut->count);
 
-    cuArraysCopyExtractVaryingOffsetCorr<<<blockspergrid, threadsperblock,0, stream>>>(imagesIn->devData, imagesIn->height, imagesIn->width,
+    hipLaunchKernelGGL(cuArraysCopyExtractVaryingOffsetCorr, dim3(blockspergrid), dim3(threadsperblock), 0, stream, imagesIn->devData, imagesIn->height, imagesIn->width,
         imagesOut->devData, imagesOut->height, imagesOut->width, imagesValid->devData, imagesOut->count, maxloc->devData);
     getLastCudaError("cuArraysCopyExtract error");
 }
@@ -368,13 +365,13 @@ __global__ void cuArraysCopyExtractFixedOffset(const float *imageIn, const int i
  * param[in] imageIn inut images
  * param[out] imageOut output images of dimension nImages*outNX*outNY
  */
-void cuArraysCopyExtract(cuArrays<float> *imagesIn, cuArrays<float> *imagesOut, int2 offset, cudaStream_t stream)
+void cuArraysCopyExtract(cuArrays<float> *imagesIn, cuArrays<float> *imagesOut, int2 offset, hipStream_t stream)
 {
     //assert(imagesIn->height >= imagesOut && inNY >= outNY);
     const int nthreads = 16;
     dim3 threadsperblock(nthreads, nthreads,1);
     dim3 blockspergrid(IDIVUP(imagesOut->height,nthreads), IDIVUP(imagesOut->width,nthreads), imagesOut->count);
-    cuArraysCopyExtractFixedOffset<<<blockspergrid, threadsperblock,0, stream>>>(imagesIn->devData, imagesIn->height, imagesIn->width,
+    hipLaunchKernelGGL(cuArraysCopyExtractFixedOffset, dim3(blockspergrid), dim3(threadsperblock), 0, stream, imagesIn->devData, imagesIn->height, imagesIn->width,
         imagesOut->devData, imagesOut->height, imagesOut->width, imagesOut->count, offset.x, offset.y);
     getLastCudaError("cuArraysCopyExtract error");
 }
@@ -398,15 +395,14 @@ __global__ void cuArraysCopyExtract_C2C_FixedOffset(const float2 *imageIn, const
 /**
  * copy/extract complex images from a large size to a smaller size from the location (offsetX, offsetY)
  */
-void cuArraysCopyExtract(cuArrays<float2> *imagesIn, cuArrays<float2> *imagesOut, int2 offset, cudaStream_t stream)
+void cuArraysCopyExtract(cuArrays<float2> *imagesIn, cuArrays<float2> *imagesOut, int2 offset, hipStream_t stream)
 {
     //assert(imagesIn->height >= imagesOut && inNY >= outNY);
     const int nthreads = NTHREADS2D;
     dim3 threadsperblock(nthreads, nthreads,1);
     dim3 blockspergrid(IDIVUP(imagesOut->height,nthreads), IDIVUP(imagesOut->width,nthreads), imagesOut->count);
 
-    cuArraysCopyExtract_C2C_FixedOffset<<<blockspergrid, threadsperblock,0, stream>>>
-        (imagesIn->devData, imagesIn->height, imagesIn->width,
+    hipLaunchKernelGGL(cuArraysCopyExtract_C2C_FixedOffset, dim3(blockspergrid), dim3(threadsperblock), 0, stream, imagesIn->devData, imagesIn->height, imagesIn->width,
         imagesOut->devData, imagesOut->height, imagesOut->width, imagesOut->count, offset.x, offset.y);
     getLastCudaError("cuArraysCopyExtractC2C error");
 }
@@ -430,14 +426,13 @@ __global__ void cuArraysCopyExtract_C2C_FixedOffset(const float3 *imageIn, const
 /**
  * copy/extract float3 images from a large size to a smaller size from the location (offsetX, offsetY)
  */
-void cuArraysCopyExtract(cuArrays<float3> *imagesIn, cuArrays<float3> *imagesOut, int2 offset, cudaStream_t stream)
+void cuArraysCopyExtract(cuArrays<float3> *imagesIn, cuArrays<float3> *imagesOut, int2 offset, hipStream_t stream)
 {
     //assert(imagesIn->height >= imagesOut && inNY >= outNY);
     const int nthreads = NTHREADS2D;
     dim3 threadsperblock(nthreads, nthreads,1);
     dim3 blockspergrid(IDIVUP(imagesOut->height,nthreads), IDIVUP(imagesOut->width,nthreads), imagesOut->count);
-    cuArraysCopyExtract_C2C_FixedOffset<<<blockspergrid, threadsperblock,0, stream>>>
-        (imagesIn->devData, imagesIn->height, imagesIn->width,
+    hipLaunchKernelGGL(cuArraysCopyExtract_C2C_FixedOffset, dim3(blockspergrid), dim3(threadsperblock), 0, stream, imagesIn->devData, imagesIn->height, imagesIn->width,
         imagesOut->devData, imagesOut->height, imagesOut->width, imagesOut->count, offset.x, offset.y);
     getLastCudaError("cuArraysCopyExtractFloat3 error");
 }
@@ -462,14 +457,13 @@ __global__ void cuArraysCopyExtract_C2R_FixedOffset(const float2 *imageIn, const
  * copy/extract complex images from a large size to float images (by taking real parts)
  * with a smaller size from the location (offsetX, offsetY)
  */
-void cuArraysCopyExtract(cuArrays<float2> *imagesIn, cuArrays<float> *imagesOut, int2 offset, cudaStream_t stream)
+void cuArraysCopyExtract(cuArrays<float2> *imagesIn, cuArrays<float> *imagesOut, int2 offset, hipStream_t stream)
 {
     //assert(imagesIn->height >= imagesOut && inNY >= outNY);
     const int nthreads = NTHREADS2D;
     dim3 threadsperblock(nthreads, nthreads,1);
     dim3 blockspergrid(IDIVUP(imagesOut->height,nthreads), IDIVUP(imagesOut->width,nthreads), imagesOut->count);
-    cuArraysCopyExtract_C2R_FixedOffset<<<blockspergrid, threadsperblock,0, stream>>>
-        (imagesIn->devData, imagesIn->height, imagesIn->width,
+    hipLaunchKernelGGL(cuArraysCopyExtract_C2R_FixedOffset, dim3(blockspergrid), dim3(threadsperblock), 0, stream, imagesIn->devData, imagesIn->height, imagesIn->width,
         imagesOut->devData, imagesOut->height, imagesOut->width, imagesOut->count, offset.x, offset.y);
     getLastCudaError("cuArraysCopyExtractC2C error");
 }
@@ -489,12 +483,12 @@ __global__ void cuArraysCopyInsert_kernel(const float2* imageIn, const int inNX,
 /**
  * copy/insert complex images from a smaller size to a larger size from the location (offsetX, offsetY)
  */
-void cuArraysCopyInsert(cuArrays<float2> *imageIn, cuArrays<float2> *imageOut, int offsetX, int offsetY, cudaStream_t stream)
+void cuArraysCopyInsert(cuArrays<float2> *imageIn, cuArrays<float2> *imageOut, int offsetX, int offsetY, hipStream_t stream)
 {
     const int nthreads = 16;
     dim3 threadsperblock(nthreads, nthreads);
     dim3 blockspergrid(IDIVUP(imageIn->height,nthreads), IDIVUP(imageIn->width,nthreads));
-    cuArraysCopyInsert_kernel<<<blockspergrid, threadsperblock,0, stream>>>(imageIn->devData, imageIn->height, imageIn->width,
+    hipLaunchKernelGGL(cuArraysCopyInsert_kernel, dim3(blockspergrid), dim3(threadsperblock), 0, stream, imageIn->devData, imageIn->height, imageIn->width,
            imageOut->devData,  imageOut->width, offsetX, offsetY);
     getLastCudaError("cuArraysCopyInsert float2 error");
 }
@@ -515,12 +509,12 @@ __global__ void cuArraysCopyInsert_kernel(const float3* imageIn, const int inNX,
 /**
  * copy/insert float3 images from a smaller size to a larger size from the location (offsetX, offsetY)
  */
-void cuArraysCopyInsert(cuArrays<float3> *imageIn, cuArrays<float3> *imageOut, int offsetX, int offsetY, cudaStream_t stream)
+void cuArraysCopyInsert(cuArrays<float3> *imageIn, cuArrays<float3> *imageOut, int offsetX, int offsetY, hipStream_t stream)
 {
     const int nthreads = 16;
     dim3 threadsperblock(nthreads, nthreads);
     dim3 blockspergrid(IDIVUP(imageIn->height,nthreads), IDIVUP(imageIn->width,nthreads));
-    cuArraysCopyInsert_kernel<<<blockspergrid, threadsperblock,0, stream>>>(imageIn->devData, imageIn->height, imageIn->width,
+    hipLaunchKernelGGL(cuArraysCopyInsert_kernel, dim3(blockspergrid), dim3(threadsperblock), 0, stream, imageIn->devData, imageIn->height, imageIn->width,
            imageOut->devData,  imageOut->width, offsetX, offsetY);
     getLastCudaError("cuArraysCopyInsert float3 error");
 }
@@ -542,12 +536,12 @@ __global__ void cuArraysCopyInsert_kernel(const float* imageIn, const int inNX, 
 /**
  * copy/insert real images from a smaller size to a larger size from the location (offsetX, offsetY)
  */
-void cuArraysCopyInsert(cuArrays<float> *imageIn, cuArrays<float> *imageOut, int offsetX, int offsetY, cudaStream_t stream)
+void cuArraysCopyInsert(cuArrays<float> *imageIn, cuArrays<float> *imageOut, int offsetX, int offsetY, hipStream_t stream)
 {
     const int nthreads = 16;
     dim3 threadsperblock(nthreads, nthreads);
     dim3 blockspergrid(IDIVUP(imageIn->height,nthreads), IDIVUP(imageIn->width,nthreads));
-    cuArraysCopyInsert_kernel<<<blockspergrid, threadsperblock,0, stream>>>(imageIn->devData, imageIn->height, imageIn->width,
+    hipLaunchKernelGGL(cuArraysCopyInsert_kernel, dim3(blockspergrid), dim3(threadsperblock), 0, stream, imageIn->devData, imageIn->height, imageIn->width,
            imageOut->devData,  imageOut->width, offsetX, offsetY);
     getLastCudaError("cuArraysCopyInsert Float error");
 }
@@ -569,12 +563,12 @@ __global__ void cuArraysCopyInsert_kernel(const int* imageIn, const int inNX, co
 /**
  * copy/insert int images from a smaller size to a larger size from the location (offsetX, offsetY)
  */
-void cuArraysCopyInsert(cuArrays<int> *imageIn, cuArrays<int> *imageOut, int offsetX, int offsetY, cudaStream_t stream)
+void cuArraysCopyInsert(cuArrays<int> *imageIn, cuArrays<int> *imageOut, int offsetX, int offsetY, hipStream_t stream)
 {
     const int nthreads = 16;
     dim3 threadsperblock(nthreads, nthreads);
     dim3 blockspergrid(IDIVUP(imageIn->height,nthreads), IDIVUP(imageIn->width,nthreads));
-    cuArraysCopyInsert_kernel<<<blockspergrid, threadsperblock,0, stream>>>(imageIn->devData, imageIn->height, imageIn->width,
+    hipLaunchKernelGGL(cuArraysCopyInsert_kernel, dim3(blockspergrid), dim3(threadsperblock), 0, stream, imageIn->devData, imageIn->height, imageIn->width,
            imageOut->devData,  imageOut->width, offsetX, offsetY);
     getLastCudaError("cuArraysCopyInsert Integer error");
 }
@@ -602,13 +596,13 @@ __global__ void cuArraysCopyPadded_R2R_kernel(float *imageIn, int inNX, int inNY
 /**
  * copy real images from a smaller size to a larger size while padding 0 for extra elements
  */
-void cuArraysCopyPadded(cuArrays<float> *imageIn, cuArrays<float> *imageOut,cudaStream_t stream)
+void cuArraysCopyPadded(cuArrays<float> *imageIn, cuArrays<float> *imageOut,hipStream_t stream)
 {
     const int nthreads = 16;
     int nImages = imageIn->count;
     dim3 blockSize(nthreads, nthreads,1);
     dim3 gridSize(IDIVUP(imageOut->height,nthreads), IDIVUP(imageOut->width,nthreads), nImages);
-    cuArraysCopyPadded_R2R_kernel<<<gridSize, blockSize, 0, stream>>>(imageIn->devData, imageIn->height, imageIn->width, imageIn->size,
+    hipLaunchKernelGGL(cuArraysCopyPadded_R2R_kernel, dim3(gridSize), dim3(blockSize), 0, stream, imageIn->devData, imageIn->height, imageIn->width, imageIn->size,
        imageOut->devData, imageOut->height, imageOut->width, imageOut->size, nImages);
     getLastCudaError("cuArraysCopyPaddedR2R error");
 }
@@ -637,14 +631,13 @@ __global__ void cuArraysCopyPadded_C2C_kernel(float2 *imageIn, int inNX, int inN
  * copy complex images from a smaller size to a larger size while padding 0 for extra elements
  * @note use for zero-padding in fft oversampling
  */
-void cuArraysCopyPadded(cuArrays<float2> *imageIn, cuArrays<float2> *imageOut,cudaStream_t stream)
+void cuArraysCopyPadded(cuArrays<float2> *imageIn, cuArrays<float2> *imageOut,hipStream_t stream)
 {
     const int nthreads = NTHREADS2D;
     int nImages = imageIn->count;
     dim3 blockSize(nthreads, nthreads,1);
     dim3 gridSize(IDIVUP(imageOut->height,nthreads), IDIVUP(imageOut->width,nthreads), nImages);
-    cuArraysCopyPadded_C2C_kernel<<<gridSize, blockSize, 0, stream>>>
-        (imageIn->devData, imageIn->height, imageIn->width, imageIn->size,
+    hipLaunchKernelGGL(cuArraysCopyPadded_C2C_kernel, dim3(gridSize), dim3(blockSize), 0, stream, imageIn->devData, imageIn->height, imageIn->width, imageIn->size,
         imageOut->devData, imageOut->height, imageOut->width, imageOut->size, nImages);
      getLastCudaError("cuArraysCopyPadded C2C error");
 }
@@ -674,14 +667,13 @@ __global__ void cuArraysCopyPadded_R2C_kernel(float *imageIn, int inNX, int inNY
  * copy real images to complex images (imaginary part=0) with larger size (pad 0 for extra elements)
  * @note use for zero-padding in fft oversampling
  */
-void cuArraysCopyPadded(cuArrays<float> *imageIn, cuArrays<float2> *imageOut,cudaStream_t stream)
+void cuArraysCopyPadded(cuArrays<float> *imageIn, cuArrays<float2> *imageOut,hipStream_t stream)
 {
     const int nthreads = NTHREADS2D;
     int nImages = imageIn->count;
     dim3 blockSize(nthreads, nthreads,1);
     dim3 gridSize(IDIVUP(imageOut->height,nthreads), IDIVUP(imageOut->width,nthreads), nImages);
-    cuArraysCopyPadded_R2C_kernel<<<gridSize, blockSize, 0, stream>>>
-        (imageIn->devData, imageIn->height, imageIn->width, imageIn->size,
+    hipLaunchKernelGGL(cuArraysCopyPadded_R2C_kernel, dim3(gridSize), dim3(blockSize), 0, stream, imageIn->devData, imageIn->height, imageIn->width, imageIn->size,
         imageOut->devData, imageOut->height, imageOut->width, imageOut->size, nImages);
      getLastCudaError("cuArraysCopyPadded R2C error");
 }
@@ -701,13 +693,12 @@ __global__ void cuArraysSetConstant_kernel(float *image, int size, float value)
  * Set real images to a constant value
  * @note use setZero if value=0 because cudaMemset is faster
  */
-void cuArraysSetConstant(cuArrays<float> *imageIn, float value, cudaStream_t stream)
+void cuArraysSetConstant(cuArrays<float> *imageIn, float value, hipStream_t stream)
 {
     const int nthreads = 256;
     int size = imageIn->getSize();
 
-    cuArraysSetConstant_kernel<<<IDIVUP(size, nthreads), nthreads, 0, stream>>>
-        (imageIn->devData, imageIn->size, value);
+    hipLaunchKernelGGL(cuArraysSetConstant_kernel, dim3(IDIVUP(size, NTHREADS)), dim3(nthreads), 0, stream, imageIn->devData, imageIn->size, value);
      getLastCudaError("cuArraysSetConstant error");
 }
 
@@ -728,10 +719,10 @@ __global__ void cuArraysR2C_kernel(float *image1, float2 *image2, int size)
  * @param[in] image1 input images
  * @param[out] image2 output images
  */
-void cuArraysR2C(cuArrays<float> *image1, cuArrays<float2> *image2, cudaStream_t stream)
+void cuArraysR2C(cuArrays<float> *image1, cuArrays<float2> *image2, hipStream_t stream)
 {
     int size = image1->getSize();
-    cuArraysR2C_kernel<<<IDIVUP(size, NTHREADS), NTHREADS, 0, stream>>>(image1->devData, image2->devData, size);
+    hipLaunchKernelGGL(cuArraysR2C_kernel, dim3(IDIVUP(size, NTHREADS)), dim3(NTHREADS), 0, stream, image1->devData, image2->devData, size);
     getLastCudaError("cuArraysR2C");
 }
 
@@ -751,10 +742,10 @@ __global__ void cuArraysC2R_kernel(float2 *image1, float *image2, int size)
  * @param[in] image1 input images
  * @param[out] image2 output images
  */
-void cuArraysC2R(cuArrays<float2> *image1, cuArrays<float> *image2, cudaStream_t stream)
+void cuArraysC2R(cuArrays<float2> *image1, cuArrays<float> *image2, hipStream_t stream)
 {
     int size = image1->getSize();
-    cuArraysC2R_kernel<<<IDIVUP(size, NTHREADS), NTHREADS, 0, stream>>>(image1->devData, image2->devData, size);
+    hipLaunchKernelGGL(cuArraysC2R_kernel, dim3(IDIVUP(size, NTHREADS)), dim3(NTHREADS), 0, stream, image1->devData, image2->devData, size);
     getLastCudaError("cuArraysC2R");
 }
 
@@ -773,10 +764,10 @@ __global__ void cuArraysAbs_kernel(float2 *image1, float *image2, int size)
  * @param[in] image1 input images
  * @param[out] image2 output images
  */
-void cuArraysAbs(cuArrays<float2> *image1, cuArrays<float> *image2, cudaStream_t stream)
+void cuArraysAbs(cuArrays<float2> *image1, cuArrays<float> *image2, hipStream_t stream)
 {
     int size = image1->getSize();
-    cuArraysAbs_kernel<<<IDIVUP(size, NTHREADS), NTHREADS, 0, stream>>>(image1->devData, image2->devData, size);
+    hipLaunchKernelGGL(cuArraysAbs_kernel, dim3(IDIVUP(size, NTHREADS)), dim3(NTHREADS), 0, stream, image1->devData, image2->devData, size);
     getLastCudaError("cuArraysAbs_kernel");
 }
 

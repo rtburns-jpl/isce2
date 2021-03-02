@@ -3,8 +3,14 @@
  * @brief Utilities for padding zeros to cuArrays
  */
 
+
+#include <hip/hip_runtime.h>
 #include "cuAmpcorUtil.h"
 #include "float2.h"
+
+#ifndef __CUDACC__
+#define hipMemsetAsync(a, b, c, d) hipMemset((a), (b), (c))
+#endif
 
 // cuda kernel for cuArraysPadding
 __global__ void cuArraysPadding_kernel(
@@ -34,7 +40,7 @@ __global__ void cuArraysPadding_kernel(
  * @param[out] image2 output images
  * @note This routine is for a single image, no longer used
  */
-void cuArraysPadding(cuArrays<float2> *image1, cuArrays<float2> *image2, cudaStream_t stream)
+void cuArraysPadding(cuArrays<float2> *image1, cuArrays<float2> *image2, hipStream_t stream)
 {
     int ThreadsPerBlock = NTHREADS2D;
     int BlockPerGridx = IDIVUP (image1->height/2, ThreadsPerBlock);
@@ -42,10 +48,9 @@ void cuArraysPadding(cuArrays<float2> *image1, cuArrays<float2> *image2, cudaStr
     dim3 dimBlock(ThreadsPerBlock, ThreadsPerBlock);
     dim3 dimGrid(BlockPerGridx, BlockPerGridy);
     // set output image to 0
-    checkCudaErrors(cudaMemsetAsync(image2->devData, 0, image2->getByteSize(),stream));
+    checkCudaErrors(hipMemsetAsync(image2->devData, 0, image2->getByteSize(),stream));
     // copy the quads of input images to four corners of the output images
-    cuArraysPadding_kernel<<<dimGrid, dimBlock, 0, stream>>>(
-        image1->devData, image1->height, image1->width,
+    hipLaunchKernelGGL(cuArraysPadding_kernel, dim3(dimGrid), dim3(dimBlock), 0, stream, image1->devData, image1->height, image1->width,
         image2->devData, image2->height, image2->width);
     getLastCudaError("cuArraysPadding_kernel");
 }
@@ -86,7 +91,7 @@ __global__ void cuArraysPaddingMany_kernel(
  * @param[out] image2 output images
  * @note To keep the band center at (0,0), move quads to corners and pad zeros in the middle
  */
-void cuArraysPaddingMany(cuArrays<float2> *image1, cuArrays<float2> *image2, cudaStream_t stream)
+void cuArraysPaddingMany(cuArrays<float2> *image1, cuArrays<float2> *image2, hipStream_t stream)
 {
     int ThreadsPerBlock = NTHREADS2D;
     int BlockPerGridx = IDIVUP (image1->height/2, ThreadsPerBlock);
@@ -94,10 +99,9 @@ void cuArraysPaddingMany(cuArrays<float2> *image1, cuArrays<float2> *image2, cud
     dim3 dimBlock(ThreadsPerBlock, ThreadsPerBlock, 1);
     dim3 dimGrid(BlockPerGridx, BlockPerGridy, image1->count);
 
-    checkCudaErrors(cudaMemsetAsync(image2->devData, 0, image2->getByteSize(),stream));
+    checkCudaErrors(hipMemsetAsync(image2->devData, 0, image2->getByteSize(),stream));
     float factor = 1.0f/image1->size;
-    cuArraysPaddingMany_kernel<<<dimGrid, dimBlock, 0, stream>>>(
-        image1->devData, image1->height, image1->width, image1->size,
+    hipLaunchKernelGGL(cuArraysPaddingMany_kernel, dim3(dimGrid), dim3(dimBlock), 0, stream, image1->devData, image1->height, image1->width, image1->size,
         image2->devData, image2->height, image2->width, image2->size, factor);
     getLastCudaError("cuArraysPadding_kernel");
 }

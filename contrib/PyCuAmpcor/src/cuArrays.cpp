@@ -5,14 +5,17 @@
  */
 
 // dependencies
+
 #include "cuArrays.h"
 #include "cudaError.h"
+
+#include <hip/hip_runtime_api.h>
 
 // allocate arrays in device memory
 template <typename T>
 void cuArrays<T>::allocate()
 {
-    checkCudaErrors(cudaMalloc((void **)&devData, getByteSize()));
+    checkCudaErrors(hipMalloc((void **)&devData, getByteSize()));
     is_allocated = 1;
 }
 
@@ -28,7 +31,7 @@ void cuArrays<T>::allocateHost()
 template <typename T>
 void cuArrays<T>::deallocate()
 {
-    checkCudaErrors(cudaFree(devData));
+    checkCudaErrors(hipFree(devData));
     is_allocated = 0;
 }
 
@@ -43,28 +46,32 @@ void cuArrays<T>::deallocateHost()
 // copy arrays from device to host
 // use asynchronous for possible overlaps between data copying and kernel execution
 template <typename T>
-void cuArrays<T>::copyToHost(cudaStream_t stream)
+void cuArrays<T>::copyToHost(hipStream_t stream)
 {
-    checkCudaErrors(cudaMemcpyAsync(hostData, devData, getByteSize(), cudaMemcpyDeviceToHost, stream));
+    checkCudaErrors(hipMemcpyAsync(hostData, devData, getByteSize(), hipMemcpyDeviceToHost, stream));
 }
 
 // copy arrays from host to device
 template <typename T>
-void cuArrays<T>::copyToDevice(cudaStream_t stream)
+void cuArrays<T>::copyToDevice(hipStream_t stream)
 {
-    checkCudaErrors(cudaMemcpyAsync(devData, hostData, getByteSize(), cudaMemcpyHostToDevice, stream));
+    checkCudaErrors(hipMemcpyAsync(devData, hostData, getByteSize(), hipMemcpyHostToDevice, stream));
 }
+
+#ifndef __CUDACC__
+#define hipMemsetAsync(a, b, c, d) hipMemset((a), (b), (c))
+#endif
 
 // set to 0
 template <typename T>
-void cuArrays<T>::setZero(cudaStream_t stream)
+void cuArrays<T>::setZero(hipStream_t stream)
 {
-    checkCudaErrors(cudaMemsetAsync(devData, 0, getByteSize(), stream));
+    checkCudaErrors(hipMemsetAsync(devData, 0, getByteSize(), stream));
 }
 
 // output (partial) data when debugging
 template <typename T>
-void cuArrays<T>::debuginfo(cudaStream_t stream) {
+void cuArrays<T>::debuginfo(hipStream_t stream) {
     // output size info
     std::cout << "Image height,width,count: " << height << "," << width << "," << count << std::endl;
     // check whether host data is allocated
@@ -89,7 +96,7 @@ void cuArrays<T>::debuginfo(cudaStream_t stream) {
 
 // need specializations for x,y components
 template<>
-void cuArrays<float2>::debuginfo(cudaStream_t stream) {
+void cuArrays<float2>::debuginfo(hipStream_t stream) {
     std::cout << "Image height,width,count: " << height << "," << width << "," << count << std::endl;
     if( !is_allocatedHost)
         allocateHost();
@@ -108,7 +115,7 @@ void cuArrays<float2>::debuginfo(cudaStream_t stream) {
 }
 
 template<>
-void cuArrays<float3>::debuginfo(cudaStream_t stream) {
+void cuArrays<float3>::debuginfo(hipStream_t stream) {
     std::cout << "Image height,width,count: " << height << "," << width << "," << count << std::endl;
     if( !is_allocatedHost)
         allocateHost();
@@ -127,7 +134,7 @@ void cuArrays<float3>::debuginfo(cudaStream_t stream) {
 }
 
 template<>
-void cuArrays<int2>::debuginfo(cudaStream_t stream) {
+void cuArrays<int2>::debuginfo(hipStream_t stream) {
     std::cout << "Image height,width,count: " << height << "," << width << "," << count << std::endl;
     if( !is_allocatedHost)
         allocateHost();
@@ -147,7 +154,7 @@ void cuArrays<int2>::debuginfo(cudaStream_t stream) {
 
 // output to file by copying to host at first
 template<typename T>
-void cuArrays<T>::outputToFile(std::string fn, cudaStream_t stream)
+void cuArrays<T>::outputToFile(std::string fn, hipStream_t stream)
 {
     if( !is_allocatedHost)
         allocateHost();

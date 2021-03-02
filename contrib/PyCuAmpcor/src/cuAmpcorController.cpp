@@ -4,6 +4,8 @@
  */
 
 // my declaration
+
+#include <hip/hip_runtime.h>
 #include "cuAmpcorController.h"
 
 // dependencies
@@ -75,13 +77,13 @@ void cuAmpcorController::runAmpcor()
     covImage->allocate();
 
     // set up the cuda streams
-    cudaStream_t streams[param->nStreams];
+    hipStream_t streams[param->nStreams];
     cuAmpcorChunk *chunk[param->nStreams];
     // iterate over cuda streams
     for(int ist=0; ist<param->nStreams; ist++)
     {
         // create each stream
-        checkCudaErrors(cudaStreamCreate(&streams[ist]));
+        checkCudaErrors(hipStreamCreate(&streams[ist]));
         // create the chunk processor for each stream
         chunk[ist]= new cuAmpcorChunk(param, referenceImage, secondaryImage,
             offsetImageRun, snrImageRun, covImageRun,
@@ -118,7 +120,7 @@ void cuAmpcorController::runAmpcor()
     }
 
     // wait all streams are done
-    cudaDeviceSynchronize();
+    hipDeviceSynchronize();
 
     // extraction of the run images to output images
     cuArraysCopyExtract(offsetImageRun, offsetImage, make_int2(0,0), streams[0]);
@@ -142,7 +144,7 @@ void cuAmpcorController::runAmpcor()
 
     for (int ist=0; ist<param->nStreams; ist++)
     {
-        checkCudaErrors(cudaStreamDestroy(streams[ist]));
+        checkCudaErrors(hipStreamDestroy(streams[ist]));
         delete chunk[ist];
     }
 

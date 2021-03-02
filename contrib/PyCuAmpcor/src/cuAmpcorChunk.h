@@ -28,7 +28,7 @@ private:
     int nWindowsAcross;   ///< number of windows in one chunk, across
 
     int devId;            ///< GPU device ID to use
-    cudaStream_t stream;  ///< CUDA stream to use
+    hipStream_t stream;  ///< CUDA stream to use
 
     GDALImage *referenceImage;  ///< reference image object
     GDALImage *secondaryImage;  ///< secondary image object
@@ -87,7 +87,7 @@ public:
     cuAmpcorChunk(cuAmpcorParameter *param_,
         GDALImage *reference_, GDALImage *secondary_,
         cuArrays<float2> *offsetImage_, cuArrays<float> *snrImage_,
-        cuArrays<float3> *covImage_, cudaStream_t stream_);
+        cuArrays<float3> *covImage_, hipStream_t stream_);
     // destructor
     ~cuAmpcorChunk();
 

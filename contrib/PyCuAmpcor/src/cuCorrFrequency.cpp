@@ -4,6 +4,10 @@
  */
 
 #include "cuCorrFrequency.h"
+
+#include <hipfft.h>
+#include <hip/hip_runtime.h>
+
 #include "cuAmpcorUtil.h"
 
 /*
@@ -13,7 +17,7 @@
  * @param nImages number of images in the batch
  * @param stream CUDA stream
  */
-cuFreqCorrelator::cuFreqCorrelator(int imageNX, int imageNY, int nImages, cudaStream_t stream_)
+cuFreqCorrelator::cuFreqCorrelator(int imageNX, int imageNY, int nImages, hipStream_t stream_)
 {
 
     int imageSize = imageNX*imageNY;
@@ -21,17 +25,17 @@ cuFreqCorrelator::cuFreqCorrelator(int imageNX, int imageNY, int nImages, cudaSt
     int n[NRANK] ={imageNX, imageNY};
     
     // set up fft plans
-    cufft_Error(cufftPlanMany(&forwardPlan, NRANK, n,
+    cufft_Error(hipfftPlanMany(&forwardPlan, NRANK, n,
                               NULL, 1, imageSize,
                               NULL, 1, fImageSize, 
-                              CUFFT_R2C, nImages));
-    cufft_Error(cufftPlanMany(&backwardPlan, NRANK, n, 
+                              HIPFFT_R2C, nImages));
+    cufft_Error(hipfftPlanMany(&backwardPlan, NRANK, n, 
                               NULL, 1, fImageSize,
                               NULL, 1, imageSize, 
-                              CUFFT_C2R, nImages));
+                              HIPFFT_C2R, nImages));
     stream = stream_;
-    cufftSetStream(forwardPlan, stream);
-    cufftSetStream(backwardPlan, stream);
+    hipfftSetStream(forwardPlan, stream);
+    hipfftSetStream(backwardPlan, stream);
 
     // set up work arrays
     workFM = new cuArrays<float2>(imageNX, (imageNY/2+1), nImages);
@@ -45,8 +49,8 @@ cuFreqCorrelator::cuFreqCorrelator(int imageNX, int imageNY, int nImages, cudaSt
 /// destructor
 cuFreqCorrelator::~cuFreqCorrelator()
 {
-    cufft_Error(cufftDestroy(forwardPlan));
-    cufft_Error(cufftDestroy(backwardPlan));	
+    cufft_Error(hipfftDestroy(forwardPlan));
+    cufft_Error(hipfftDestroy(backwardPlan));	
     workFM->deallocate();
     workFS->deallocate();
     workT->deallocate();
@@ -65,14 +69,14 @@ void cuFreqCorrelator::execute(cuArrays<float> *templates, cuArrays<float> *imag
     // pad the reference windows to the the size of search windows
     cuArraysCopyPadded(templates, workT, stream);
     // forward fft to frequency domain
-    cufft_Error(cufftExecR2C(forwardPlan, workT->devData, workFM->devData));
-    cufft_Error(cufftExecR2C(forwardPlan, images->devData, workFS->devData));
+    cufft_Error(hipfftExecR2C(forwardPlan, workT->devData, workFM->devData));
+    cufft_Error(hipfftExecR2C(forwardPlan, images->devData, workFS->devData));
     // cufft doesn't normalize, so manually get the image size for normalization
     float coef = 1.0/(images->size);
     // multiply reference with secondary windows in frequency domain
     cuArraysElementMultiplyConjugate(workFM, workFS, coef, stream);
     // backward fft to get correlation surface in time domain
-    cufft_Error(cufftExecC2R(backwardPlan, workFM->devData, workT->devData));
+    cufft_Error(hipfftExecC2R(backwardPlan, workFM->devData, workT->devData));
     // extract to get proper size of correlation surface
     cuArraysCopyExtract(workT, results, make_int2(0, 0), stream);
     // all done
@@ -89,7 +93,7 @@ __global__ void cudaKernel_elementMulConjugate(float2 *ainout, float2 *bin, int 
 {
     int idx = threadIdx.x + blockIdx.x*blockDim.x;
     if(idx < size) {
-        cuComplex prod; 
+        hipComplex prod; 
         prod = cuMulConj(ainout[idx], bin[idx]);
         ainout [idx] = prod*coef;
     }
@@ -101,12 +105,12 @@ __global__ void cudaKernel_elementMulConjugate(float2 *ainout, float2 *bin, int 
  * @param[in] image2, the secondary image
  * @param[in] coef, usually the normalization factor
  */
-void cuArraysElementMultiplyConjugate(cuArrays<float2> *image1, cuArrays<float2> *image2, float coef, cudaStream_t stream)
+void cuArraysElementMultiplyConjugate(cuArrays<float2> *image1, cuArrays<float2> *image2, float coef, hipStream_t stream)
 {
     int size = image1->getSize();
     int threadsperblock = NTHREADS;
     int blockspergrid = IDIVUP (size, threadsperblock);
-    cudaKernel_elementMulConjugate<<<blockspergrid, threadsperblock, 0, stream>>>(image1->devData, image2->devData, size, coef );
+    hipLaunchKernelGGL(cudaKernel_elementMulConjugate, dim3(blockspergrid), dim3(threadsperblock), 0, stream, image1->devData, image2->devData, size, coef);
     getLastCudaError("cuArraysElementMultiply error\n");
 } 
 //end of file
